@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jupyter-notebook
+  labels:
+    app: jupyter-notebook
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jupyter-notebook
+  template:
+    metadata:
+      labels:
+        app: jupyter-notebook
+    spec:
+      containers:
+      - name: minimal-notebook
+        image: jupyter/minimal-notebook:latest
+        ports:
+        - containerPort: 8888
+        volumeMounts:
+          - name: hana-json-vm
+            mountPath: /var/opt/json
+      volumes:
+        - name: hana-json-vm
+          persistentVolumeClaim:
+            claimName: hana-json-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jupyter-notebook
+  labels:
+    app: jupyter-notebook
+spec:
+  #clusterIP: None
+  ports:
+  - name: http
+    targetPort: 8888
+    protocol: TCP
+    port: 80
+  selector:
+    app: jupyter-notebook
+---
+apiVersion: gateway.kyma-project.io/v1alpha1
+kind: APIRule
+metadata:
+  name: jupyter-notebook
+spec:
+  gateway: kyma-gateway.kyma-system.svc.cluster.local
+  rules:
+  - accessStrategies:
+    - config: {}
+      handler: allow
+    methods:
+    - GET
+    - POST
+    - PUT
+    - PATCH
+    - DELETE
+    - HEAD
+    path: /.*
+  service:
+    host: jupyter-notebook
+    name: jupyter-notebook
+    port: 80
